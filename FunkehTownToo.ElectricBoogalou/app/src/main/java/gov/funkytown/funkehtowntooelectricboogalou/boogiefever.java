@@ -28,54 +28,22 @@ public class boogiefever extends AppCompatActivity {
         setContentView(R.layout.activity_boogiefever);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-
-       FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-            }
-        });
     }
 
-    public void actionevent(){
-        try
-        {
-            // Find all available drivers from attached devices.
-            UsbManager manager = (UsbManager) getSystemService(Context.USB_SERVICE);
-            List<UsbSerialDriver> availableDrivers = UsbSerialProber.getDefaultProber().findAllDrivers(manager);
-            if (availableDrivers.isEmpty()) {
-                return;
-            }
+    public void left(View v){
 
-// Open a connection to the first available driver.
-            UsbSerialDriver driver = availableDrivers.get(0);
-            UsbDeviceConnection connection = manager.openDevice(driver.getDevice());
-            if (connection == null) {
-                // You probably need to call UsbManager.requestPermission(driver.getDevice(), ..)
-                return;
-            }
+    }
 
-// Read some data! Most have just one port (port 0).
-            List<UsbSerialPort> ports = driver.getPorts();
-            UsbSerialPort port = ports.get(0);
-            port.open(connection);
-            try {
-                port.setBaudRate(115200);
-                byte buffer[] = new byte[16];
-                int numBytesRead = port.read(buffer, 1000);
-                Log.d(TAG, "Read " + numBytesRead + " bytes.");
-            } catch (IOException e) {
-                // Deal with error.
-            } finally {
-                port.close();
-            }
-        }
-        catch (Exception ex)
-        {
-            System.out.println("Dehr wahsh ahn ehrr");
-        }
+    public void right(View v){
+
+    }
+
+    public void forward(View v){
+
+    }
+
+    public void back(View v){
+
     }
 
     @Override

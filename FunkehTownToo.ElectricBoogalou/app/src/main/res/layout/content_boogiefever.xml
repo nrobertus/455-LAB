@@ -14,7 +14,59 @@
     tools:context="gov.funkytown.funkehtowntooelectricboogalou.boogiefever">
 
     <TextView
-        android:text="Hello World!"
+        android:text="Yah cant stop tha funk!!!"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        android:id="@+id/textView" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="LEFT"
+        android:id="@+id/leftButton"
+        android:layout_below="@+id/textView"
+        android:layout_alignParentStart="true"
+        android:layout_marginTop="165dp"
+        android:clickable="true"
+        android:nestedScrollingEnabled="false"
+        android:enabled="true"
+        android:onClick="left" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="RIGHT"
+        android:id="@+id/rightButton"
+        android:onClick="right"
+        android:enabled="true"
+        android:clickable="true"
+        android:layout_alignTop="@+id/leftButton"
+        android:layout_alignParentEnd="true"
+        android:layout_marginEnd="122dp" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="FORWARD"
+        android:id="@+id/forwardButton"
+        android:clickable="true"
+        android:nestedScrollingEnabled="false"
+        android:enabled="true"
+        android:onClick="forward"
+        android:layout_marginStart="162dp"
+        android:layout_below="@+id/textView"
+        android:layout_toEndOf="@+id/textView" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="BACK"
+        android:id="@+id/backButton"
+        android:clickable="true"
+        android:nestedScrollingEnabled="false"
+        android:enabled="true"
+        android:onClick="back"
+        android:layout_alignParentBottom="true"
+        android:layout_alignStart="@+id/forwardButton"
+        android:layout_marginBottom="99dp" />
 </RelativeLayout>
