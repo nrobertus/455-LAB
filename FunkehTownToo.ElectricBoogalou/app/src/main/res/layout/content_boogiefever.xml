@@ -69,4 +69,15 @@
         android:layout_alignParentBottom="true"
         android:layout_alignStart="@+id/forwardButton"
         android:layout_marginBottom="99dp" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="STOPPIT!"
+        android:id="@+id/stopButton"
+        android:onClick="stop"
+        android:enabled="true"
+        android:clickable="true"
+        android:layout_alignTop="@+id/leftButton"
+        android:layout_alignStart="@+id/forwardButton" />
 </RelativeLayout>
