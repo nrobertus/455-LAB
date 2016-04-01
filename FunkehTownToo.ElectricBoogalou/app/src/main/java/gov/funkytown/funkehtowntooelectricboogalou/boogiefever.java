@@ -24,6 +24,8 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 
+
+
 public class boogiefever extends AppCompatActivity {
 
     TextView grandMasterFunkJR;
@@ -53,33 +55,29 @@ public class boogiefever extends AppCompatActivity {
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
+        startActivityForResult(
+                Tango.getRequestPermissionIntent(Tango.PERMISSIONTYPE_ADF_LOAD_SAVE),
+                Tango.TANGO_INTENT_ACTIVITYCODE);
+
         grandMasterFunkJR = (TextView)findViewById(R.id.grandMasterFunk);
 
         grandMasterFunkJR.setText("Funky code set text");
 
-        Intent intent = getIntent();
-        mIsLearningMode = intent.getBooleanExtra(ALStartActivity.USE_AREA_LEARNING, false);
-        mIsConstantSpaceRelocalize = intent.getBooleanExtra(ALStartActivity.LOAD_ADF, false);
-
         Tango mTango = new Tango(this);
-        TangoConfig mcConfig = null;
-        String areaByName = "";
+        TangoConfig mcConfig = setTangoConfig(mTango);
+        String areaByName = "room";
         String uuid = "room";
+
+        Boolean error = false;
 
         ArrayList<String> fullUUIDList = new ArrayList<String>();
         // Returns a list of ADFs with their UUIDs
         fullUUIDList = mTango.listAreaDescriptions();
 
-
         grandMasterFunkJR.setText("Getting UUID");
-        for(int i = 0; i < fullUUIDList.size(); i++){
-            if(fullUUIDList.get(i) == areaByName){
-                uuid = fullUUIDList.get(i);
+        uuid = fullUUIDList.get(0);
 
-                grandMasterFunkJR.setText("UUID FOUND UUID IS : " + uuid);
-            }
-        }
-
+        grandMasterFunkJR.setText("FOUND UUID NAME " + uuid );
         // Load the latest ADF if ADFs are found.
         if (fullUUIDList.size() > 0) {
             mcConfig.putString(TangoConfig.KEY_STRING_AREADESCRIPTION, uuid);
@@ -88,7 +86,7 @@ public class boogiefever extends AppCompatActivity {
         try {
             mcConfig.putString(TangoConfig.KEY_STRING_AREADESCRIPTION, uuid);
         } catch (TangoErrorException e) {
-            // handle exception
+            error = true;
         }
 
         try {
@@ -96,34 +94,36 @@ public class boogiefever extends AppCompatActivity {
             mcConfig = mTango.getConfig(TangoConfig.CONFIG_TYPE_CURRENT);
             mcConfig.putBoolean(TangoConfig.KEY_BOOLEAN_LEARNINGMODE, true);
         } catch (TangoErrorException e) {
-            // handle exception
+            error = true;
         }
 
+        if(error){
+            grandMasterFunkJR.setText("SETUP COMPLETE WITH ERROR");
+        }
+        else{
+            grandMasterFunkJR.setText("SETUP COMPLETE NO ERROR");
+        }
+
+        grandMasterFunkJR.setText("WALK AROUND FOR POSE DATA");
     }
 
     /**
      * Sets up the tango configuration object. Make sure mTango object is initialized before
      * making this call.
      */
-    private TangoConfig setTangoConfig(Tango tango, boolean isLearningMode, boolean isLoadAdf) {
+    private TangoConfig setTangoConfig(Tango tango) {
         TangoConfig config = new TangoConfig();
         config = tango.getConfig(TangoConfig.CONFIG_TYPE_DEFAULT);
-        // Check if learning mode
-        if (isLearningMode) {
-            // Set learning mode to config.
-            config.putBoolean(TangoConfig.KEY_BOOLEAN_LEARNINGMODE, true);
-
-        }
         // Check for Load ADF/Constant Space relocalization mode
-        if (isLoadAdf) {
-            ArrayList<String> fullUUIDList = new ArrayList<String>();
-            // Returns a list of ADFs with their UUIDs
-            fullUUIDList = tango.listAreaDescriptions();
-            // Load the latest ADF if ADFs are found.
-            if (fullUUIDList.size() > 0) {
-                config.putString(TangoConfig.KEY_STRING_AREADESCRIPTION,
-                        fullUUIDList.get(fullUUIDList.size() - 1));
-            }
+
+        ArrayList<String> fullUUIDList = new ArrayList<String>();
+        // Returns a list of ADFs with their UUIDs
+        System.out.println("!!!!!!!!!!!!!!!!!!!!!!!! LOADING AREA DESCRIPTIONS !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+        fullUUIDList = tango.listAreaDescriptions();
+        // Load the latest ADF if ADFs are found.
+        if (fullUUIDList.size() > 0) {
+            config.putString(TangoConfig.KEY_STRING_AREADESCRIPTION,
+                    fullUUIDList.get(fullUUIDList.size() - 1));
         }
         return config;
     }
