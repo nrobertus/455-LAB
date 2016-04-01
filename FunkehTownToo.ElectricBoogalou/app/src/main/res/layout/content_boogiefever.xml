@@ -80,4 +80,16 @@
         android:clickable="true"
         android:layout_alignTop="@+id/leftButton"
         android:layout_alignStart="@+id/forwardButton" />
+
+    <EditText
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/grandMasterFunk"
+        android:layout_below="@+id/stopButton"
+        android:layout_toEndOf="@+id/leftButton"
+        android:minWidth="600dp"
+        android:textAlignment="center"
+        android:text="Text label neatness"
+        android:enabled="true"
+        android:editable="false" />
 </RelativeLayout>
