@@ -25,4 +25,5 @@ dependencies {
     compile 'com.android.support:appcompat-v7:23.2.0'
     compile 'com.android.support:design:23.2.0'
     compile project(':usbSerialForAndroid')
+    compile files('src/main/java/gov/funkytown/funkehtowntooelectricboogalou/TangoSDK_Jih_Java.jar')
 }
