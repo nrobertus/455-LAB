@@ -51,6 +51,9 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 
+import android.speech.tts.TextToSpeech;
+import java.util.Locale;
+
 /**
  * Main Activity class for the Area Description example. Handles the connection to the Tango service
  * and propagation of Tango pose data to OpenGL and Layout views. OpenGL rendering logic is
@@ -62,6 +65,7 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
     private static final String TAG = AreaLearningActivity.class.getSimpleName();
     private static final int SECS_TO_MILLISECS = 1000;
     private Tango mTango;
+    private TextToSpeech tts;
     private TangoConfig mConfig;
     private TextView mUuidTextView;
     private TextView mRelocalizationTextView;
@@ -114,6 +118,15 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
         // Configure OpenGL renderer
         mRenderer = setupGLViewAndRenderer();
         grandMasterFunkRender = (TextView)findViewById(R.id.grandMasterFunkRender);
+
+        tts = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
+            @Override
+            public void onInit(int status) {
+                if(status != TextToSpeech.ERROR){
+                    tts.setLanguage(Locale.UK);
+                }
+            }
+        });
 
     }
 
@@ -387,6 +400,12 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
 
 
                                 if (mIsRelocalized) {
+                                    try{
+                                        Thread.sleep(5000);
+                                    }
+                                    catch(Exception ex){
+
+                                    }
                                     funkyNavigationFunction(tPose);
                                 } else {
                                     serialAction(stop_char);
@@ -514,6 +533,14 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
     }
 
     public void funkyNavigationFunction(TangoPoseData tPose){
+
+        double r_target = 1.6;
+        double r_offset = 0.4;
+
+        double pos_tolerance = 0.1;
+
+        boolean found = false;
+
         DecimalFormat df = new DecimalFormat("#.#");
         df.setRoundingMode(RoundingMode.HALF_UP);
         double x_target = 0.00;
@@ -536,17 +563,37 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
 
         double test = angle-tangle;
 
-        if(z_rotation <= 0.1 && z_rotation >= -0.1){
-            robot_movement = "stop";
+
+        if(found==false){
+            if(test <= (r_target+r_offset) && test >= (r_target - r_offset)){
+
+
+                if(Math.abs(x_pos) <= pos_tolerance && Math.abs(z_pos) <= pos_tolerance){
+                    robot_movement = "Stop";
+                    serialAction(stop_char);
+                    tts.speak("WE FOUND IT", tts.QUEUE_FLUSH, null);
+                    found = true;
+                }
+                else{
+
+                    robot_movement = "go!";
+                    serialAction(back_char);
+                }
+
+            }
+            else if(test > (r_target+r_offset)){
+                robot_movement = "left";
+                serialAction(left_char);
+            }
+            else if(test < (r_target - r_offset)) {
+                robot_movement = "right";
+                serialAction(right_char);
+            }
+
+        }
+        else{
+            robot_movement = "STOP!";
             serialAction(stop_char);
-        }
-        else if(z_rotation > 0.1){
-            robot_movement = "right";
-            serialAction(right_char);
-        }
-        else if(z_rotation < -0.1) {
-            robot_movement = "left";
-            serialAction(left_char);
         }
 
 
@@ -556,7 +603,7 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
                         Double.toString(x_rotation) + ", " +
                         Double.toString(z_rotation) + ", M:" +
                         robot_movement + ", A:" +
-                        Double.toString(test):
+                        Double.toString(test) + "FUNKYFLOUNDERFOUND:" + Boolean.toString(found) :
                 "FUNKY FAIL");
 
     }
