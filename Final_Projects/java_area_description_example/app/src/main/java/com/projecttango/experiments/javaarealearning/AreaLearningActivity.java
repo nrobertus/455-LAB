@@ -64,6 +64,7 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
     private static final String ACTION_USB_PERMISSION = "com.multitools.andres.LCView";
     private static final String TAG = AreaLearningActivity.class.getSimpleName();
     private static final int SECS_TO_MILLISECS = 1000;
+    private Boolean funky_search_started = false;
     private Tango mTango;
     private TextToSpeech tts;
     private TangoConfig mConfig;
@@ -74,6 +75,8 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
     private Button mFirstPersonButton;
     private Button mThirdPersonButton;
     private Button mTopDownButton;
+    private Button funkyStartButton;
+    private Button funkyRecordButton;
 
     private double mPreviousPoseTimeStamp;
     private double mTimeToNextUpdate = UPDATE_INTERVAL_MS;
@@ -81,12 +84,17 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
     private boolean mIsRelocalized;
     private boolean mIsLearningMode;
     private boolean mIsConstantSpaceRelocalize;
+    private boolean recordLocation = false;
+    private boolean found = false;
 
     private String stop_char = " ";
     private String left_char = "a";
     private String right_char = "d";
     private String back_char = "s";
     private String forward_char = "w";
+
+    private double[] funky_target = new double[]{0.0, 0.0, 0.0};
+
 
     TextView grandMasterFunkRender;
 
@@ -203,6 +211,14 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
     @Override
     public void onClick(View v) {
         switch (v.getId()) {
+            case R.id.record_target_funk:
+                recordLocation = true;
+                break;
+            case R.id.start_search_button_funk:
+                found = false;
+                funky_search_started = true;
+                tts.speak("Starting", tts.QUEUE_FLUSH, null);
+                break;
             case R.id.first_person_button:
                 mRenderer.setFirstPersonView();
                 break;
@@ -254,6 +270,8 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
         mFirstPersonButton = (Button) findViewById(R.id.first_person_button);
         mThirdPersonButton = (Button) findViewById(R.id.third_person_button);
         mTopDownButton = (Button) findViewById(R.id.top_down_button);
+        funkyStartButton = (Button) findViewById(R.id.start_search_button_funk);
+        funkyRecordButton = (Button) findViewById(R.id.record_target_funk);
 
         mSaveAdfButton = (Button) findViewById(R.id.save_adf_button);
         mUuidTextView = (TextView) findViewById(R.id.adf_uuid_textview);
@@ -263,6 +281,8 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
         mFirstPersonButton.setOnClickListener(this);
         mThirdPersonButton.setOnClickListener(this);
         mTopDownButton.setOnClickListener(this);
+        funkyStartButton.setOnClickListener(this);
+        funkyRecordButton.setOnClickListener(this);
 
         if (isLearningMode) {
             // Disable save ADF button until Tango relocalizes to the current ADF.
@@ -399,16 +419,12 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
                                 mSaveAdfButton.setEnabled(mIsRelocalized);
 
 
-                                if (mIsRelocalized) {
-                                    try{
-                                        Thread.sleep(5000);
-                                    }
-                                    catch(Exception ex){
-
-                                    }
+                                if (mIsRelocalized && funky_search_started){
                                     funkyNavigationFunction(tPose);
                                 } else {
+                                    recordLocation = false;
                                     serialAction(stop_char);
+
                                 }
 
                                 mRelocalizationTextView.setText(mIsRelocalized ?
@@ -539,12 +555,12 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
 
         double pos_tolerance = 0.1;
 
-        boolean found = false;
+
 
         DecimalFormat df = new DecimalFormat("#.#");
         df.setRoundingMode(RoundingMode.HALF_UP);
-        double x_target = 0.00;
-        double z_target= 0.00;
+        double x_target = funky_target[0];
+        double z_target= funky_target[1];
         double x_pos = roundToTwo(tPose.translation[0]);
         double z_pos = roundToTwo(tPose.translation[1]);
 
@@ -561,7 +577,17 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
         double tangle = Math.atan2(2*(tPose.rotation[3]*tPose.rotation[2] + tPose.rotation[0]*tPose.rotation[1]),
                 1-2*(tPose.rotation[1]*tPose.rotation[1] + tPose.rotation[2]*tPose.rotation[2]));
 
-        double test = angle-tangle;
+        double test = roundToTwo(angle-tangle);
+
+
+
+        if(recordLocation){
+            funky_target[0] = x_pos;
+            funky_target[1] = z_pos;
+            funky_target[2] = test;
+            tts.speak("Target recorded", tts.QUEUE_FLUSH, null);
+            recordLocation = false;
+        }
 
 
         if(found==false){
@@ -571,13 +597,13 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
                 if(Math.abs(x_pos) <= pos_tolerance && Math.abs(z_pos) <= pos_tolerance){
                     robot_movement = "Stop";
                     serialAction(stop_char);
-                    tts.speak("WE FOUND IT", tts.QUEUE_FLUSH, null);
+                    tts.speak("Engaging target", tts.QUEUE_FLUSH, null);
                     found = true;
                 }
                 else{
 
                     robot_movement = "go!";
-                    serialAction(back_char);
+                    serialAction(forward_char);
                 }
 
             }
@@ -598,12 +624,12 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
 
 
         grandMasterFunkRender.setText(mIsRelocalized ?
-                Double.toString(x_pos) + ", " +
-                        Double.toString(z_pos) + ", R:" +
-                        Double.toString(x_rotation) + ", " +
-                        Double.toString(z_rotation) + ", M:" +
-                        robot_movement + ", A:" +
-                        Double.toString(test) + "FUNKYFLOUNDERFOUND:" + Boolean.toString(found) :
+                        Double.toString(x_pos) +
+                        ", " + Double.toString(z_pos) +
+                        "  A:" + Double.toString(test) +
+                        "  F^3:" + robot_movement +
+                        "  T:" + Double.toString(x_target) +
+                                ", " + Double.toString(z_target):
                 "FUNKY FAIL");
 
     }
