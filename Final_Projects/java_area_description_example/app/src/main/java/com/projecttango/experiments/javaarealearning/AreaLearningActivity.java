@@ -108,6 +108,8 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
     private boolean found = false;
     private boolean stopped = false;
 
+    private boolean landmarkAssigned = false;
+
     private final AtomicBoolean motion_running = new AtomicBoolean(true);
 
     private String stop_char = " ";
@@ -120,7 +122,15 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
 
     private String messageOut = "";
 
-    private List<Double[]> waypoints = new ArrayList<Double[]>();
+    private String robot_movement = "";
+
+    private String last_port_comand = " ";
+
+    private int current_waypoint_index = 0;
+
+    private List<double[]> waypoints = new ArrayList<double[]>();
+
+    private List<double[]> landmarks = new ArrayList<double[]>();
 
     double yAngle;
 
@@ -213,7 +223,10 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
 
                 try {
 
+                    System.out.println("Listening");
                     socket = serverSocket.accept();
+
+                    System.out.println("Accepted");
 
                     CommunicationThread commThread = new CommunicationThread(socket);
                     new Thread(commThread).start();
@@ -252,9 +265,31 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
 
                     String read = input.readLine();
 
-                    messageOut += read + "\n";
+                    messageOut = read + "\n";
+                    read = "" + read.charAt(0);
+                    last_port_comand = read;
 
-                    System.out.println("Found a string, yo " + read);
+
+                    if(read.contains("z")){
+                        setWaypoint = true;
+                    }
+                    else if (read.contains(("x"))){
+                        recordLocation = true;
+                    }
+                    else if(read.contains("1")){
+                        found = false;
+                        stopped = false;
+                        funky_search_started = true;
+                        funky_target = waypoints.get(0);
+                        tts.speak("Starting", tts.QUEUE_FLUSH, null);
+
+                    }
+                    else if (read.contains("2")){
+                        stopped = true;
+                        serialAction(stop_char);
+                        robot_movement = "STOP!";
+                        tts.speak("Stopping", tts.QUEUE_FLUSH, null);
+                    }
 
                 } catch (IOException e) {
 
@@ -370,6 +405,7 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
                 found = false;
                 stopped = false;
                 funky_search_started = true;
+                funky_target = waypoints.get(0);
                 tts.speak("Starting", tts.QUEUE_FLUSH, null);
                 break;
             case R.id.stop_search_button_funk:
@@ -711,8 +747,6 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
     /******************************************************/
     public void funkyNavigationFunction(TangoPoseData tPose){
 
-
-
         double r_tolerance = 0.3;
         double pos_tolerance = 0.1;
 
@@ -727,7 +761,7 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
         double x_pos = roundToTwo(tPose.translation[0]);
         double y_pos = roundToTwo(tPose.translation[1]);
 
-        String robot_movement = "";
+
 
         double y_dif = (y_target-y_pos);
         double x_dif = (x_target-x_pos);
@@ -738,7 +772,7 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
 
 
         if(setWaypoint){
-            Double newPoint[] = new Double[3];
+            double newPoint[] = new double[3];
             newPoint[0] = x_pos;
             newPoint[1] = y_pos;
             newPoint[2] = test;
@@ -753,9 +787,14 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
 
 
         if(recordLocation){
-            funky_target[0] = x_pos;
-            funky_target[1] = y_pos;
-            funky_target[2] = test;
+
+            double newPoint[] = new double[3];
+            newPoint[0] = x_pos;
+            newPoint[1] = y_pos;
+            newPoint[2] = test;
+
+            landmarks.add(newPoint); // Add the waypoint to the waypoints array
+
             tts.speak("Target recorded", tts.QUEUE_FLUSH, null);
             recordLocation = false;
         }
@@ -769,8 +808,27 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
                     y_pos >= (y_target - pos_tolerance)){
                     robot_movement = "Stop";
                     serialAction(stop_char);
-                    tts.speak("Engaging target", tts.QUEUE_FLUSH, null);
-                    found = true;
+                    tts.speak("Found Waypoint", tts.QUEUE_FLUSH, null);
+
+                    if(current_waypoint_index >= (waypoints.size()-1)){
+                        if((landmarks.size() > 0) && landmarkAssigned == false){
+
+                            funky_target = landmarks.get(0);
+                            landmarkAssigned = true;
+                            tts.speak("Going to landmark", tts.QUEUE_FLUSH, null);
+                        }
+                        else{
+                            tts.speak("Engaging target", tts.QUEUE_FLUSH, null);
+                            found = true;
+                        }
+
+                    }
+                    else{
+                            current_waypoint_index = current_waypoint_index +1;
+                            funky_target = waypoints.get(current_waypoint_index);
+                            tts.speak("Finding Next Waypoint", tts.QUEUE_FLUSH, null);
+                    }
+
                 }
                 else{
                     robot_movement = "go!";
@@ -787,8 +845,27 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
             }
         }
         else{
-            robot_movement = "STOP!";
-            serialAction(stop_char);
+            if(last_port_comand.contains(stop_char)){
+                robot_movement = "STOP!";
+                serialAction(stop_char);
+            }
+            else if( last_port_comand.contains(forward_char)){
+                robot_movement = "GO!";
+                serialAction(forward_char);
+            }
+            else if(last_port_comand.contains(back_char)){
+                robot_movement = "BACK!";
+                serialAction(back_char);
+            }
+            else if( last_port_comand.contains(left_char)){
+                robot_movement = "LEFT!";
+                serialAction(left_char);
+            }
+            else if (last_port_comand.contains(right_char)){
+                robot_movement = "RIGHT!";
+                serialAction( right_char);
+            }
+
         }
         if(ip == "Unable to Fetch IP.."){
             ip = getIpAddress();
@@ -805,7 +882,8 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
                         "\nMovement: " + robot_movement +
                         "\nTarget: " + Double.toString(x_target) +
                         ", " + Double.toString(y_target) +
-                        "\nIP: " + ip+ "\n" + waypointString + messageOut
+                        "\nIP: " + ip+ "\n" + waypointString +
+                        "\nPort in: " + messageOut
                 );
 
     }

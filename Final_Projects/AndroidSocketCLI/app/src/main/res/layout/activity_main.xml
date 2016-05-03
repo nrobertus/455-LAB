@@ -4,19 +4,80 @@
     android:layout_height="fill_parent"
     android:orientation="vertical" >
 
-    <EditText
-        android:id="@+id/EditText01"
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content"
-        android:text="JavaCodeGeeks" >
-    </EditText>
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/forward_button"
+            android:onClick="goForward"
+            android:text="Forward">
+        </Button>
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/left_button"
+            android:onClick="goLeft"
+            android:text="Left">
+        </Button>
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/right_button"
+            android:onClick="goRight"
+            android:text="Right">
+        </Button>
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/backward_button"
+            android:onClick="goBack"
+            android:text="Back">
+        </Button>
 
     <Button
-        android:id="@+id/myButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:onClick="onClick"
-        android:text="Send" >
+        android:id="@+id/stop_button"
+        android:onClick="goStop"
+        android:text="Stop">
     </Button>
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/waypoint_button"
+        android:onClick="saveWaypoint"
+        android:text="Save Waypoint">
+    </Button>
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/target_button"
+        android:onClick="saveTarget"
+        android:text="Save Target">
+    </Button>
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/seek_button"
+        android:onClick="goSeek"
+        android:text="Seek">
+    </Button>
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/cancel_seek_button"
+        android:onClick="cancelSeek"
+        android:text="Cancel Seek">
+    </Button>
+
+
+
+
+
 
 </LinearLayout>
