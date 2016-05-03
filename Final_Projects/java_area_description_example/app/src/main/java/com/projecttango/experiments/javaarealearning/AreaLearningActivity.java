@@ -60,6 +60,17 @@ import android.speech.tts.TextToSpeech;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.ServerSocket;
+import java.net.Socket;
+
+import android.app.Activity;
+import android.os.Bundle;
+import android.os.Handler;
+import android.widget.TextView;
+
 /**
  * Main Activity class for the Area Description example. Handles the connection to the Tango service
  * and propagation of Tango pose data to OpenGL and Layout views. OpenGL rendering logic is
@@ -84,6 +95,7 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
     private Button funkyStartButton;
     private Button funkyRecordButton;
     private Button funkyStopButton;
+    private Button funkyWaypointButton;
 
     private double mPreviousPoseTimeStamp;
     private double mTimeToNextUpdate = UPDATE_INTERVAL_MS;
@@ -92,6 +104,7 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
     private boolean mIsLearningMode;
     private boolean mIsConstantSpaceRelocalize;
     private boolean recordLocation = false;
+    private boolean setWaypoint = false;
     private boolean found = false;
     private boolean stopped = false;
 
@@ -103,11 +116,25 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
     private String back_char = "s";
     private String forward_char = "w";
 
+    private String waypointString = "";
+
+    private String messageOut = "";
+
+    private List<Double[]> waypoints = new ArrayList<Double[]>();
+
     double yAngle;
 
     private String ip;
 
     private double[] funky_target = new double[]{0.0, 0.0, 0.0};
+
+    private ServerSocket serverSocket;
+
+    Handler updateConversationHandler;
+
+    Thread serverThread = null;
+
+    public static final int SERVERPORT = 6000;
 
 
     TextView grandMasterFunkRender;
@@ -153,6 +180,88 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
         ip = getIpAddress();
 
 
+
+        updateConversationHandler = new Handler();
+
+        this.serverThread = new Thread(new ServerThread());
+        this.serverThread.start();
+
+
+
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        try {
+            serverSocket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    class ServerThread implements Runnable {
+
+        public void run() {
+            Socket socket = null;
+            try {
+                serverSocket = new ServerSocket(SERVERPORT);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            while (!Thread.currentThread().isInterrupted()) {
+
+                try {
+
+                    socket = serverSocket.accept();
+
+                    CommunicationThread commThread = new CommunicationThread(socket);
+                    new Thread(commThread).start();
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    class CommunicationThread implements Runnable {
+
+        private Socket clientSocket;
+
+        private BufferedReader input;
+
+        public CommunicationThread(Socket clientSocket) {
+
+            this.clientSocket = clientSocket;
+
+            try {
+
+                this.input = new BufferedReader(new InputStreamReader(this.clientSocket.getInputStream()));
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        public void run() {
+
+            while (!Thread.currentThread().isInterrupted()) {
+
+                try {
+
+                    String read = input.readLine();
+
+                    messageOut += read + "\n";
+
+                    System.out.println("Found a string, yo " + read);
+
+                } catch (IOException e) {
+
+                    e.printStackTrace();
+                }
+            }
+        }
 
     }
 
@@ -250,6 +359,10 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
     @Override
     public void onClick(View v) {
         switch (v.getId()) {
+            case R.id.record_waypoint_funk:
+                setWaypoint = true;
+
+                break;
             case R.id.record_target_funk:
                 recordLocation = true;
                 break;
@@ -317,6 +430,7 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
         funkyStartButton = (Button) findViewById(R.id.start_search_button_funk);
         funkyRecordButton = (Button) findViewById(R.id.record_target_funk);
         funkyStopButton = (Button) findViewById(R.id.stop_search_button_funk);
+        funkyWaypointButton = (Button) findViewById(R.id.record_waypoint_funk);
 
         mSaveAdfButton = (Button) findViewById(R.id.save_adf_button);
         mUuidTextView = (TextView) findViewById(R.id.adf_uuid_textview);
@@ -329,6 +443,7 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
         funkyStartButton.setOnClickListener(this);
         funkyRecordButton.setOnClickListener(this);
         funkyStopButton.setOnClickListener(this);
+        funkyWaypointButton.setOnClickListener(this);
 
         if (isLearningMode) {
             // Disable save ADF button until Tango relocalizes to the current ADF.
@@ -597,6 +712,7 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
     public void funkyNavigationFunction(TangoPoseData tPose){
 
 
+
         double r_tolerance = 0.3;
         double pos_tolerance = 0.1;
 
@@ -620,6 +736,20 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
 
         double test = roundToTwo(angle-yAngle);
 
+
+        if(setWaypoint){
+            Double newPoint[] = new Double[3];
+            newPoint[0] = x_pos;
+            newPoint[1] = y_pos;
+            newPoint[2] = test;
+
+            waypoints.add(newPoint); // Add the waypoint to the waypoints array
+
+            waypointString += (Double.toString(newPoint[0]) +" , " + Double.toString(newPoint[1]) + " ," + Double.toString(newPoint[2]) + "\n");
+
+            tts.speak("Waypoint recorded", tts.QUEUE_FLUSH, null);
+            setWaypoint = false;
+        }
 
 
         if(recordLocation){
@@ -665,15 +795,18 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
         }
 
 
-        grandMasterFunkRender.setText(mIsRelocalized ?
-                        Double.toString(x_pos) +
+
+
+
+        grandMasterFunkRender.setText(
+                        "Position: "+Double.toString(x_pos) +
                         ", " + Double.toString(y_pos) +
-                        "  A:" + Double.toString(test) +
-                        "  F^3:" + robot_movement +
-                        "  T:" + Double.toString(x_target) +
+                        "\nAngle: " + Double.toString(test) +
+                        "\nMovement: " + robot_movement +
+                        "\nTarget: " + Double.toString(x_target) +
                         ", " + Double.toString(y_target) +
-                        "  IP:" + ip:
-                "FUNKY FAIL");
+                        "\nIP: " + ip+ "\n" + waypointString + messageOut
+                );
 
     }
 }

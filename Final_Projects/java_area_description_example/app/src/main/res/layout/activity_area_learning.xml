@@ -56,16 +56,15 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content" />
 
-            <EditText
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:id="@+id/grandMasterFunkRender"
-                android:minWidth="600dp"
-                android:textAlignment="center"
-                android:text="Text label neatness"
-                android:enabled="true"
-                android:editable="false" />
+
         </LinearLayout>
+        <EditText
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/grandMasterFunkRender"
+            android:background="@android:color/transparent"
+            android:enabled="true"
+            android:editable="false" />
     </LinearLayout>
 
 
@@ -79,6 +78,16 @@
         android:layout_alignParentRight="true"
         android:paddingRight="5dp"
         android:text="@string/top_down" />
+
+    <Button
+        android:id="@+id/record_waypoint_funk"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/record_target_funk"
+        android:layout_above="@+id/record_target_funk"
+        android:layout_alignParentRight="true"
+        android:paddingRight="5dp"
+        android:text="Record waypoint" />
 
     <Button
         android:id="@+id/record_target_funk"
