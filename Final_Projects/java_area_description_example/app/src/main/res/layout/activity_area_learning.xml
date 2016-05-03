@@ -84,12 +84,21 @@
         android:id="@+id/record_target_funk"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignLeft="@+id/start_search_button_funk"
-        android:layout_above="@+id/start_search_button_funk"
+        android:layout_alignLeft="@+id/stop_search_button_funk"
+        android:layout_above="@+id/stop_search_button_funk"
         android:layout_alignParentRight="true"
         android:paddingRight="5dp"
         android:text="Record target" />
 
+    <Button
+        android:id="@+id/stop_search_button_funk"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/start_search_button_funk"
+        android:layout_above="@+id/start_search_button_funk"
+        android:layout_alignParentRight="true"
+        android:paddingRight="5dp"
+        android:text="Stop the funk!" />
 
     <Button
         android:id="@+id/start_search_button_funk"

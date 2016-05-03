@@ -47,12 +47,18 @@ import org.rajawali3d.surface.RajawaliSurfaceView;
 
 import java.io.IOException;
 import java.math.RoundingMode;
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.List;
 
 import android.speech.tts.TextToSpeech;
 import java.util.Locale;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Main Activity class for the Area Description example. Handles the connection to the Tango service
@@ -77,6 +83,7 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
     private Button mTopDownButton;
     private Button funkyStartButton;
     private Button funkyRecordButton;
+    private Button funkyStopButton;
 
     private double mPreviousPoseTimeStamp;
     private double mTimeToNextUpdate = UPDATE_INTERVAL_MS;
@@ -86,12 +93,19 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
     private boolean mIsConstantSpaceRelocalize;
     private boolean recordLocation = false;
     private boolean found = false;
+    private boolean stopped = false;
+
+    private final AtomicBoolean motion_running = new AtomicBoolean(true);
 
     private String stop_char = " ";
     private String left_char = "a";
     private String right_char = "d";
     private String back_char = "s";
     private String forward_char = "w";
+
+    double yAngle;
+
+    private String ip;
 
     private double[] funky_target = new double[]{0.0, 0.0, 0.0};
 
@@ -136,8 +150,33 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
             }
         });
 
+        ip = getIpAddress();
+
+
+
     }
 
+
+    public static String getIpAddress() {
+        String ipAddress = "Unable to Fetch IP..";
+        try {
+            Enumeration en;
+            en = NetworkInterface.getNetworkInterfaces();
+            while ( en.hasMoreElements()) {
+                NetworkInterface intf = (NetworkInterface)en.nextElement();
+                for (Enumeration enumIpAddr = intf.getInetAddresses(); enumIpAddr.hasMoreElements();) {
+                    InetAddress inetAddress = (InetAddress)enumIpAddr.nextElement();
+                    if (!inetAddress.isLoopbackAddress()&&inetAddress instanceof Inet4Address) {
+                        ipAddress=inetAddress.getHostAddress().toString();
+                        return ipAddress;
+                    }
+                }
+            }
+        } catch (SocketException ex) {
+            ex.printStackTrace();
+        }
+        return ipAddress;
+    }
 
     /**
      * Implements SetADFNameDialog.CallbackListener.
@@ -216,8 +255,13 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
                 break;
             case R.id.start_search_button_funk:
                 found = false;
+                stopped = false;
                 funky_search_started = true;
                 tts.speak("Starting", tts.QUEUE_FLUSH, null);
+                break;
+            case R.id.stop_search_button_funk:
+                stopped = true;
+                tts.speak("Stopping", tts.QUEUE_FLUSH, null);
                 break;
             case R.id.first_person_button:
                 mRenderer.setFirstPersonView();
@@ -272,6 +316,7 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
         mTopDownButton = (Button) findViewById(R.id.top_down_button);
         funkyStartButton = (Button) findViewById(R.id.start_search_button_funk);
         funkyRecordButton = (Button) findViewById(R.id.record_target_funk);
+        funkyStopButton = (Button) findViewById(R.id.stop_search_button_funk);
 
         mSaveAdfButton = (Button) findViewById(R.id.save_adf_button);
         mUuidTextView = (TextView) findViewById(R.id.adf_uuid_textview);
@@ -283,6 +328,7 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
         mTopDownButton.setOnClickListener(this);
         funkyStartButton.setOnClickListener(this);
         funkyRecordButton.setOnClickListener(this);
+        funkyStopButton.setOnClickListener(this);
 
         if (isLearningMode) {
             // Disable save ADF button until Tango relocalizes to the current ADF.
@@ -418,14 +464,7 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
                             synchronized (mSharedLock) {
                                 mSaveAdfButton.setEnabled(mIsRelocalized);
 
-
-                                if (mIsRelocalized && funky_search_started){
-                                    funkyNavigationFunction(tPose);
-                                } else {
-                                    recordLocation = false;
-                                    serialAction(stop_char);
-
-                                }
+                                funkyNavigationFunction(tPose);
 
                                 mRelocalizationTextView.setText(mIsRelocalized ?
                                         getString(R.string.localized) :
@@ -548,88 +587,92 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
         return number;
     }
 
+
+
+
+
+    /*******************************************************/
+    //  Navigation code block. This is called from the UI thread. Should change that.
+    /******************************************************/
     public void funkyNavigationFunction(TangoPoseData tPose){
 
-        double r_target = 1.6;
-        double r_offset = 0.4;
 
+        double r_tolerance = 0.3;
         double pos_tolerance = 0.1;
 
-
-
-        DecimalFormat df = new DecimalFormat("#.#");
-        df.setRoundingMode(RoundingMode.HALF_UP);
         double x_target = funky_target[0];
-        double z_target= funky_target[1];
-        double x_pos = roundToTwo(tPose.translation[0]);
-        double z_pos = roundToTwo(tPose.translation[1]);
+        double y_target= funky_target[1];
+        double r_target = 0;
 
-        double x_rotation = roundToTwo(tPose.rotation[0]);
-        double z_rotation = roundToTwo(tPose.rotation[2]);
+        double q[];
+        q = tPose.rotation;
+        yAngle = Math.atan2(2 * (q[3] * q[2] + q[0] * q[1]), 1 - 2 * (q[1] * q[1] + q[2] * q[2]));
+        yAngle = yAngle + Math.PI / 2;
+        double x_pos = roundToTwo(tPose.translation[0]);
+        double y_pos = roundToTwo(tPose.translation[1]);
 
         String robot_movement = "";
 
-        double z_dif = (z_target-z_pos);
+        double y_dif = (y_target-y_pos);
         double x_dif = (x_target-x_pos);
 
-        double angle = Math.atan2(z_dif, x_dif);
+        double angle = Math.atan2(y_dif, x_dif);
 
-        double tangle = Math.atan2(2*(tPose.rotation[3]*tPose.rotation[2] + tPose.rotation[0]*tPose.rotation[1]),
-                1-2*(tPose.rotation[1]*tPose.rotation[1] + tPose.rotation[2]*tPose.rotation[2]));
-
-        double test = roundToTwo(angle-tangle);
+        double test = roundToTwo(angle-yAngle);
 
 
 
         if(recordLocation){
             funky_target[0] = x_pos;
-            funky_target[1] = z_pos;
+            funky_target[1] = y_pos;
             funky_target[2] = test;
             tts.speak("Target recorded", tts.QUEUE_FLUSH, null);
             recordLocation = false;
         }
 
 
-        if(found==false){
-            if(test <= (r_target+r_offset) && test >= (r_target - r_offset)){
-
-
-                if(Math.abs(x_pos) <= pos_tolerance && Math.abs(z_pos) <= pos_tolerance){
+        if(found==false && mIsRelocalized && funky_search_started && !stopped){
+            if(test <= (r_target+r_tolerance) && test >= (r_target - r_tolerance)){
+                if(x_pos <= (x_target + pos_tolerance) &&
+                    x_pos >= (x_target - pos_tolerance)&&
+                    y_pos <= (y_target + pos_tolerance)&&
+                    y_pos >= (y_target - pos_tolerance)){
                     robot_movement = "Stop";
                     serialAction(stop_char);
                     tts.speak("Engaging target", tts.QUEUE_FLUSH, null);
                     found = true;
                 }
                 else{
-
                     robot_movement = "go!";
                     serialAction(forward_char);
                 }
-
             }
-            else if(test > (r_target+r_offset)){
+            else if(test > (r_target+r_tolerance)){
                 robot_movement = "left";
                 serialAction(left_char);
             }
-            else if(test < (r_target - r_offset)) {
+            else if(test < (r_target - r_tolerance)) {
                 robot_movement = "right";
                 serialAction(right_char);
             }
-
         }
         else{
             robot_movement = "STOP!";
             serialAction(stop_char);
         }
+        if(ip == "Unable to Fetch IP.."){
+            ip = getIpAddress();
+        }
 
 
         grandMasterFunkRender.setText(mIsRelocalized ?
                         Double.toString(x_pos) +
-                        ", " + Double.toString(z_pos) +
+                        ", " + Double.toString(y_pos) +
                         "  A:" + Double.toString(test) +
                         "  F^3:" + robot_movement +
                         "  T:" + Double.toString(x_target) +
-                                ", " + Double.toString(z_target):
+                        ", " + Double.toString(y_target) +
+                        "  IP:" + ip:
                 "FUNKY FAIL");
 
     }
