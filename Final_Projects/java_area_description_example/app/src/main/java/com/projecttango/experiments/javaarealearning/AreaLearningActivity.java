@@ -28,21 +28,17 @@ import com.google.atap.tangoservice.TangoPoseData;
 import com.google.atap.tangoservice.TangoXyzIjData;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.app.FragmentManager;
 import android.app.PendingIntent;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
 import android.os.Bundle;
-import android.text.InputType;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -75,19 +71,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.widget.TextView;
 
-import java.util.ArrayList;
-
-import android.app.Activity;
-import android.content.ActivityNotFoundException;
-import android.content.Intent;
-import android.os.Bundle;
-import android.speech.RecognizerIntent;
-import android.view.Menu;
-import android.view.View;
-import android.widget.ImageButton;
-import android.widget.TextView;
-import android.widget.Toast;
-
 /**
  * Main Activity class for the Area Description example. Handles the connection to the Tango service
  * and propagation of Tango pose data to OpenGL and Layout views. OpenGL rendering logic is
@@ -114,11 +97,6 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
     private Button funkyStopButton;
     private Button funkyWaypointButton;
 
-    protected static final int RESULT_SPEECH = 1;
-
-    private ImageButton btnSpeak;
-    private TextView txtText;
-
     private double mPreviousPoseTimeStamp;
     private double mTimeToNextUpdate = UPDATE_INTERVAL_MS;
 
@@ -129,11 +107,8 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
     private boolean setWaypoint = false;
     private boolean found = false;
     private boolean stopped = false;
-    private boolean use_waypoints = false;
 
     private boolean landmarkAssigned = false;
-
-    private boolean match_found = false;
 
     private final AtomicBoolean motion_running = new AtomicBoolean(true);
 
@@ -151,17 +126,11 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
 
     private String last_port_comand = " ";
 
-    private String STT_input = "";
-
-    private String m_Text = "";
-
     private int current_waypoint_index = 0;
 
     private List<double[]> waypoints = new ArrayList<double[]>();
 
     private List<double[]> landmarks = new ArrayList<double[]>();
-
-    private List<String> landmark_names = new ArrayList<String>();
 
     double yAngle;
 
@@ -226,59 +195,9 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
 
         this.serverThread = new Thread(new ServerThread());
         this.serverThread.start();
-        txtText = (TextView) findViewById(R.id.txtText);
-
-        btnSpeak = (ImageButton) findViewById(R.id.btnSpeak);
-        btnSpeak.setOnClickListener(new View.OnClickListener() {
-
-            @Override
-            public void onClick(View v) {
-
-                Intent intent = new Intent(
-                        RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-
-                intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, "en-US");
-
-                try {
-                    startActivityForResult(intent, RESULT_SPEECH);
-                    txtText.setText("");
-                } catch (ActivityNotFoundException a) {
-                    Toast t = Toast.makeText(getApplicationContext(),
-                            "Opps! Your device doesn't support Speech to Text",
-                            Toast.LENGTH_SHORT);
-                    t.show();
-                }
-            }
-        });
 
 
-    }
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        //getMenuInflater().inflate(R.menu.activity_main, menu);
-        return true;
-    }
-
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-
-        switch (requestCode) {
-            case RESULT_SPEECH: {
-                if (resultCode == RESULT_OK && null != data) {
-
-                    ArrayList<String> text = data
-                            .getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
-
-                    //txtText.setText(text.get(0));
-                    STT_input = text.get(0);
-                }
-                break;
-            }
-
-        }
     }
 
     @Override
@@ -370,9 +289,6 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
                         serialAction(stop_char);
                         robot_movement = "STOP!";
                         tts.speak("Stopping", tts.QUEUE_FLUSH, null);
-                    }
-                    else if (read.contains("3")){
-
                     }
 
                 } catch (IOException e) {
@@ -489,10 +405,7 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
                 found = false;
                 stopped = false;
                 funky_search_started = true;
-                if(!waypoints.isEmpty()){
-                    funky_target = waypoints.get(0);
-                    use_waypoints = true;
-                }
+                funky_target = waypoints.get(0);
                 tts.speak("Starting", tts.QUEUE_FLUSH, null);
                 break;
             case R.id.stop_search_button_funk:
@@ -826,6 +739,9 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
     }
 
 
+
+
+
     /*******************************************************/
     //  Navigation code block. This is called from the UI thread. Should change that.
     /******************************************************/
@@ -852,30 +768,7 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
 
         double angle = Math.atan2(y_dif, x_dif);
 
-        double test = roundToTwo(angle - yAngle);
-
-        int index = -3;
-
-        String checkString = "";
-
-        if(STT_input != ""){
-            String input_string = STT_input.toLowerCase();
-            String query = "nothing here";
-            if(input_string.startsWith("go to")){
-                query = input_string.substring(input_string.lastIndexOf("to ") + 3);
-                checkString = query;
-            }
-            index = landmark_names.indexOf(query);
-            if(index >= 0){
-                match_found = true;
-                found = false;
-                stopped = false;
-                funky_search_started = true;
-                funky_target = landmarks.get(index);
-                tts.speak("Starting", tts.QUEUE_FLUSH, null);
-                STT_input = "";
-            }
-        }
+        double test = roundToTwo(angle-yAngle);
 
 
         if(setWaypoint){
@@ -902,34 +795,6 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
 
             landmarks.add(newPoint); // Add the waypoint to the waypoints array
 
-            AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setTitle("Title");
-
-// Set up the input
-            final EditText input = new EditText(this);
-// Specify the type of input expected; this, for example, sets the input as a password, and will mask the text
-            input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_CLASS_TEXT);
-            builder.setView(input);
-
-// Set up the buttons
-            builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    m_Text = input.getText().toString();
-                    landmark_names.add(m_Text);
-                }
-            });
-            builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    dialog.cancel();
-                }
-            });
-
-            builder.show();
-
-
-
             tts.speak("Target recorded", tts.QUEUE_FLUSH, null);
             recordLocation = false;
         }
@@ -938,40 +803,31 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
         if(found==false && mIsRelocalized && funky_search_started && !stopped){
             if(test <= (r_target+r_tolerance) && test >= (r_target - r_tolerance)){
                 if(x_pos <= (x_target + pos_tolerance) &&
-                    x_pos >= (x_target - pos_tolerance)&&
-                    y_pos <= (y_target + pos_tolerance)&&
-                    y_pos >= (y_target - pos_tolerance)){
+                        x_pos >= (x_target - pos_tolerance)&&
+                        y_pos <= (y_target + pos_tolerance)&&
+                        y_pos >= (y_target - pos_tolerance)){
                     robot_movement = "Stop";
                     serialAction(stop_char);
-                    tts.speak("Found target", tts.QUEUE_FLUSH, null);
+                    tts.speak("Found Waypoint", tts.QUEUE_FLUSH, null);
 
-                    if(use_waypoints == true) {
-                        if(current_waypoint_index >= (waypoints.size()-1)){
-                            if((landmarks.size() > 0) && landmarkAssigned == false){
+                    if(current_waypoint_index >= (waypoints.size()-1)){
+                        if((landmarks.size() > 0) && landmarkAssigned == false){
 
-                                funky_target = landmarks.get(0);
-                                landmarkAssigned = true;
-                                tts.speak("Going to landmark", tts.QUEUE_FLUSH, null);
-                            }
-                            else{
-                                tts.speak("Engaging target", tts.QUEUE_FLUSH, null);
-                                found = true;
-                            }
-
+                            funky_target = landmarks.get(0);
+                            landmarkAssigned = true;
+                            tts.speak("Going to landmark", tts.QUEUE_FLUSH, null);
                         }
                         else{
-                            current_waypoint_index = current_waypoint_index +1;
-                            funky_target = waypoints.get(current_waypoint_index);
-                            tts.speak("Finding Next Waypoint", tts.QUEUE_FLUSH, null);
+                            tts.speak("Engaging target", tts.QUEUE_FLUSH, null);
+                            found = true;
                         }
 
                     }
                     else{
-                        found = true;
+                        current_waypoint_index = current_waypoint_index +1;
+                        funky_target = waypoints.get(current_waypoint_index);
+                        tts.speak("Finding Next Waypoint", tts.QUEUE_FLUSH, null);
                     }
-
-
-
 
                 }
                 else{
@@ -1015,21 +871,20 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
             ip = getIpAddress();
         }
 
+
+
+
+
         grandMasterFunkRender.setText(
-                        "Position: "+Double.toString(x_pos) +
+                "Position: "+Double.toString(x_pos) +
                         ", " + Double.toString(y_pos) +
                         "\nAngle: " + Double.toString(test) +
                         "\nMovement: " + robot_movement +
                         "\nTarget: " + Double.toString(x_target) +
                         ", " + Double.toString(y_target) +
                         "\nIP: " + ip+ "\n" + waypointString +
-                        "\nPort in: " + messageOut +
-                        "\nSTT in: " + STT_input +
-                        "\nLast target: " + m_Text+
-                        "\nMatch Found: " + match_found +
-                        "\nIndex: " + Integer.toString(index)+
-                        "\nCheck String: " + checkString
-                );
+                        "\nPort in: " + messageOut
+        );
 
     }
 }
