@@ -129,8 +129,11 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
     private boolean setWaypoint = false;
     private boolean found = false;
     private boolean stopped = false;
+    private boolean use_waypoints = false;
 
     private boolean landmarkAssigned = false;
+
+    private boolean match_found = false;
 
     private final AtomicBoolean motion_running = new AtomicBoolean(true);
 
@@ -486,7 +489,10 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
                 found = false;
                 stopped = false;
                 funky_search_started = true;
-                funky_target = waypoints.get(0);
+                if(!waypoints.isEmpty()){
+                    funky_target = waypoints.get(0);
+                    use_waypoints = true;
+                }
                 tts.speak("Starting", tts.QUEUE_FLUSH, null);
                 break;
             case R.id.stop_search_button_funk:
@@ -820,9 +826,6 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
     }
 
 
-
-
-
     /*******************************************************/
     //  Navigation code block. This is called from the UI thread. Should change that.
     /******************************************************/
@@ -849,7 +852,30 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
 
         double angle = Math.atan2(y_dif, x_dif);
 
-        double test = roundToTwo(angle-yAngle);
+        double test = roundToTwo(angle - yAngle);
+
+        int index = -3;
+
+        String checkString = "";
+
+        if(STT_input != ""){
+            String input_string = STT_input.toLowerCase();
+            String query = "nothing here";
+            if(input_string.startsWith("go to")){
+                query = input_string.substring(input_string.lastIndexOf("to ") + 3);
+                checkString = query;
+            }
+            index = landmark_names.indexOf(query);
+            if(index >= 0){
+                match_found = true;
+                found = false;
+                stopped = false;
+                funky_search_started = true;
+                funky_target = landmarks.get(index);
+                tts.speak("Starting", tts.QUEUE_FLUSH, null);
+                STT_input = "";
+            }
+        }
 
 
         if(setWaypoint){
@@ -917,26 +943,35 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
                     y_pos >= (y_target - pos_tolerance)){
                     robot_movement = "Stop";
                     serialAction(stop_char);
-                    tts.speak("Found Waypoint", tts.QUEUE_FLUSH, null);
+                    tts.speak("Found target", tts.QUEUE_FLUSH, null);
 
-                    if(current_waypoint_index >= (waypoints.size()-1)){
-                        if((landmarks.size() > 0) && landmarkAssigned == false){
+                    if(use_waypoints == true) {
+                        if(current_waypoint_index >= (waypoints.size()-1)){
+                            if((landmarks.size() > 0) && landmarkAssigned == false){
 
-                            funky_target = landmarks.get(0);
-                            landmarkAssigned = true;
-                            tts.speak("Going to landmark", tts.QUEUE_FLUSH, null);
+                                funky_target = landmarks.get(0);
+                                landmarkAssigned = true;
+                                tts.speak("Going to landmark", tts.QUEUE_FLUSH, null);
+                            }
+                            else{
+                                tts.speak("Engaging target", tts.QUEUE_FLUSH, null);
+                                found = true;
+                            }
+
                         }
                         else{
-                            tts.speak("Engaging target", tts.QUEUE_FLUSH, null);
-                            found = true;
+                            current_waypoint_index = current_waypoint_index +1;
+                            funky_target = waypoints.get(current_waypoint_index);
+                            tts.speak("Finding Next Waypoint", tts.QUEUE_FLUSH, null);
                         }
 
                     }
                     else{
-                            current_waypoint_index = current_waypoint_index +1;
-                            funky_target = waypoints.get(current_waypoint_index);
-                            tts.speak("Finding Next Waypoint", tts.QUEUE_FLUSH, null);
+                        found = true;
                     }
+
+
+
 
                 }
                 else{
@@ -980,10 +1015,6 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
             ip = getIpAddress();
         }
 
-
-
-
-
         grandMasterFunkRender.setText(
                         "Position: "+Double.toString(x_pos) +
                         ", " + Double.toString(y_pos) +
@@ -994,7 +1025,10 @@ public class AreaLearningActivity extends Activity implements View.OnClickListen
                         "\nIP: " + ip+ "\n" + waypointString +
                         "\nPort in: " + messageOut +
                         "\nSTT in: " + STT_input +
-                        "\nLast target: " + m_Text
+                        "\nLast target: " + m_Text+
+                        "\nMatch Found: " + match_found +
+                        "\nIndex: " + Integer.toString(index)+
+                        "\nCheck String: " + checkString
                 );
 
     }
